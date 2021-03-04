@@ -33,7 +33,7 @@
 
 * `MSG_TO_FILE`
 
-`log_msg(MSG_DEBUG | MSG_TO_FILE, "Message to stdout AND to file: %s"\n", text);`
+`log_msg(MSG_DEBUG | MSG_TO_FILE, "Message to stdout AND to file: %s\n", text);`
 
 
 Для установки текущего уровня логирования используется:
