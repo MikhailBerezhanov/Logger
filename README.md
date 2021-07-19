@@ -95,12 +95,15 @@
 
 ### Пример использования
 
-`#define LOG_MODULE_NAME     "[ APP ]"
+```C
+#define LOG_MODULE_NAME     "[ APP ]"
 #include "logger.h"
+
 int main(int argc, char* argv[])
 {
     log_init("logger-c.log", DFLT_FILE_SIZE, NULL);
     log_set_level(MSG_DEBUG);
     const char *text = "Hello logger";
     log_msg(MSG_DEBUG | MSG_TO_FILE, "Message to stdout AND to file: %s\n", text);
-}`
+}
+```
