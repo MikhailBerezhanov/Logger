@@ -1,6 +1,6 @@
 
-#ifndef _LOGER_HPP
-#define _LOGER_HPP
+#ifndef _LOGGER_HPP
+#define _LOGGER_HPP
 
 #include <cstdint>
 #include <cstring>
@@ -195,8 +195,9 @@ int Log::to_file(const char* stamp, const char* fmt, Args&&... args)
 
 	// Если задан максимальный размер и он превышен
     if (log_max_fsize && file_size >= log_max_fsize){
-        logfp = fopen(log_fname.c_str(), "w+");
         log_msg(MSG_VERBOSE, "------ Rotating log file ------\n");
+        if(log_rotate) log_rotate(log_rotate_arg);
+        logfp = fopen(log_fname.c_str(), "w+");
         rotated = true;
     }
     else logfp = std::fopen(log_fname.c_str(), "a+");
@@ -206,7 +207,7 @@ int Log::to_file(const char* stamp, const char* fmt, Args&&... args)
     	if(stamp) std::fprintf(logfp, "%s", stamp);
         ret = std::fprintf(logfp, fmt, to_c(args)...); 
         std::fclose(logfp);
-        if(log_rotate) log_rotate(log_rotate_arg);
+        
     }
    	else {
    		log_perr("Couldnt open log file '%s'", log_fname); 
@@ -235,12 +236,12 @@ int Log::msg(stamp_t st, const char* mod_name, log_lvl_t flags, const char* fmt,
 	std::string msg_stamp = make_msg_stamp(st, mod_name);
 
 	// Синхронизация вывода
-	//std::unique_lock<std::recursive_mutex> lock(log_print_mutex);
+	std::unique_lock<std::recursive_mutex> lock(log_print_mutex);
 
 	// Проверка уровня сообщения для вывода в терминал
 	// (игнорируем сообщения только для записи в файл и с уровнем выше заданного допустимого)
 	if(msg_lvl && msg_lvl <= curr_lvl){
-		std::printf("%s", msg_stamp.c_str());
+		std::printf("%s ", msg_stamp.c_str());
 		ret = std::printf(fmt, to_c(args)...);
 	}
 	

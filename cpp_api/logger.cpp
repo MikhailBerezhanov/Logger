@@ -2,11 +2,11 @@
 #include <ctime>
 #include <sys/stat.h>
 
-#ifdef UNIT_TEST
-	#define LOG_MODULE_NAME 	"[ LOGER ] "
+#ifdef _UNIT_TEST
+	#define LOG_MODULE_NAME 	"[ LOGGER ]"
 #endif
 
-#include "loger.hpp"
+#include "logger.hpp"
 
 // Инициализация статических членов класса
 log_lvl_t Log::log_lvl = LOG_LVL_DEFAULT;
@@ -92,13 +92,13 @@ void unformatted()
 	//std::cout << Log::make_msg_stamp(LOG_MODULE_NAME) << "Config file json:\n" << std::setw(4) << "json" << std::endl;
 }
 
-#ifdef UNIT_TEST
+#ifdef _UNIT_TEST
 #include <thread>
 
-void printer(int num)
+void printer(int num, int thread_no = 1)
 {
 	for(int i = 0; i < num; ++i)
-		Log::msg(Log::ms_stamp, MSG_DEBUG | MSG_TO_FILE, "Fucking file muted\n");
+		Log::msg(Log::ms_stamp, LOG_MODULE_NAME, MSG_DEBUG | MSG_TO_FILE, "(TH.%d) #%d debug + to_file message\n", thread_no, i);
 
     return;
 }
@@ -162,12 +162,14 @@ int main(int argc, char* argv[])
     fmt_of(ldval);  	// e
     fmt_of(bval);   	// b
 
+    Log::msg(Log::ms_stamp, LOG_MODULE_NAME, MSG_DEBUG | MSG_TO_FILE, "Starting thread(s)\n");
+    // std::unique_lock<std::recursive_timed_mutex> lock(Log::log_file_mutex);
+
+    for (int i = 0; i < 30; ++i){
+    	std::thread(printer, 50, i).detach();
+    }
     
-    std::unique_lock<std::recursive_timed_mutex> lock(Log::log_file_mutex);
-
-    Log::msg(Log::ms_stamp, MSG_DEBUG, "Starting thread\n");
-    std::thread(printer, 10).join();
-
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 	return 0;
 }
 #endif

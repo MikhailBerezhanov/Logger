@@ -43,6 +43,13 @@
 	#define MODULE_NAME 		""
 #endif
 
+// МБайт -> Байты
+#define _MB(x)		( (uint64_t)((x) * 1024 * 1024) )
+// КБайт -> Байты
+#define _KB(x)		( (uint64_t)((x) * 1024 ) )
+
+#define DFLT_FILE_SIZE	( _MB(2) )
+
 // Функция вывода лога в терминал
 #define log_print(str...) 		printf(str)
 
@@ -170,7 +177,7 @@ void log_hexstr (log_lvl_t flags, const void *_dump, size_t len);
 	char msg_stamp[64] = {0}; 													\
 	if(stamp) log_make_stamp(stamp, MODULE_NAME, msg_stamp, sizeof msg_stamp); 	\
 	if(_msg_lvl && _msg_lvl <= _curr_lvl){ 										\
-		log_print("%s", msg_stamp); 											\
+		log_print("%s ", msg_stamp); 											\
 		log_print(str); 														\
 	} 																			\
 	if((flags) & MSG_TO_FILE) log_to_file(msg_stamp, str); 						\
@@ -207,7 +214,7 @@ void log_hexstr (log_lvl_t flags, const void *_dump, size_t len);
 	snprintf(&buf[len], sizeof(buf) - len, str); 								\
 	len = strlen(buf); 															\
 	snprintf(&buf[len], sizeof(buf) - len, ": %s\n", strerror(errno)); 			\
-	log_msg_ex(dtime_stamp, (flags), buf); 										\
+	log_msg_ex(dtime_stamp, (flags), "%s", buf); 								\
 }while(0)
 
 // Вывод и запись в файл сообщения об ошибке в стиле perr

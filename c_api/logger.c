@@ -4,8 +4,8 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 
-#define LOG_MODULE_NAME     "[ LOGER ] "
-#include "loger.h"
+#define LOG_MODULE_NAME     "[ LOGGER ]"
+#include "logger.h"
 
 #define HEXLINE_MOD 16
 
@@ -38,9 +38,10 @@ static uint64_t get_filesize (const char* fname)
 // Инициализация логера
 void log_init(const char* fname, uint64_t max_fsize, log_rotate_cb cb)
 {
-    strcpy(log_fname, fname);
+    if(fname) strcpy(log_fname, fname);
+    else strcpy(log_fname, "");
     log_max_fsize = max_fsize;
-    log_msg(MSG_DEBUG, "Setting log_max_fsize to: %" PRIu64 "\n", log_max_fsize);
+    log_msg(MSG_DEBUG, "Setting log_max_fsize to: %" PRIu64 " [B]\n", log_max_fsize);
     log_cb = cb;
 }
 
@@ -102,7 +103,7 @@ inline bool log_check_level(log_lvl_t _flags)
 }
 
 // Запись сообщения в лог-файл
-void log_to_file(const char* stamp, const char *format, ...)
+void log_to_file(const char *stamp, const char *format, ...)
 {
     if(!strcmp(log_fname, "")) return;
 
@@ -125,7 +126,7 @@ void log_to_file(const char* stamp, const char *format, ...)
 
         logfp = fopen(log_fname, "w+");
         if(logfp) {
-            if(stamp) fprintf(logfp, stamp);
+            if(stamp) fprintf(logfp, "%s", stamp);
             fprintf(logfp, "------ Log has been rotated ------\n");
         }
     }
@@ -134,8 +135,8 @@ void log_to_file(const char* stamp, const char *format, ...)
     }
 
     if(logfp){
-    	if(stamp) fprintf(logfp, stamp);
-        fprintf(logfp, str);
+    	if(stamp) fprintf(logfp, "%s", stamp);
+        fprintf(logfp, "%s", str);
         fclose(logfp);
     }
     else log_dbg("Couldnt open log file '%s'\n", log_fname);   
@@ -222,3 +223,14 @@ void log_hexstr (log_lvl_t flags, const void *_dump, size_t len)
 	}
 	log_msg_ex(no_stamp, flags, "\n");
 }
+
+
+#ifdef _UNIT_TEST
+int main(int argc, char* argv[])
+{
+    log_init("logger-c.log", DFLT_FILE_SIZE, NULL);
+    log_set_level(MSG_DEBUG);
+    const char *text = "Hello logger";
+    log_msg(MSG_DEBUG | MSG_TO_FILE, "Message to stdout AND to file: %s\n", text);
+}
+#endif
