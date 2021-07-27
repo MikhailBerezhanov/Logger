@@ -5,8 +5,8 @@ CFLAGS=-Wall -Wno-format-security -Wno-unused-variable -Wno-unused-function
 # PATHS
 SRC_DIR = .
 INCLUDES = -I$(SRC_DIR)
-C_DIR = $(SRC_DIR)/c_api
-CPP_DIR = $(SRC_DIR)/cpp_api
+C_DIR = $(SRC_DIR)/c_src
+CPP_DIR = $(SRC_DIR)/cpp_src
 
 LLIBS=-lpthread
 
@@ -33,3 +33,9 @@ logger-c:
 
 clean:
 	@rm -f $(C_TEST_BIN) $(CPP_TEST_BIN)
+
+mem_check-cpp:	OUTPUT_FILE = $(TESTS_DIR)/valgrind-out.txt
+
+mem_check-cpp: logger-cpp
+	@valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=$(OUTPUT_FILE) $(CPP_TEST_BIN)
+	@cat $(OUTPUT_FILE)
