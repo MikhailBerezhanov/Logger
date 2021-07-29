@@ -1,6 +1,7 @@
 
 #include <time.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <inttypes.h>
 #include <sys/stat.h>
 
@@ -12,6 +13,8 @@
 static log_lvl_t curr_log_level = MSG_DEBUG; 
 static char log_fname[640] = {0};
 static uint64_t log_max_fsize = 0;   // По умолчанию не задан (ротация лог-файла запрещена)
+static uint max_files_num = 3;
+static uint curr_file_num = 1;
 static log_rotate_cb log_cb = NULL;         
 
 #if LOG_MUTUAL
@@ -36,11 +39,12 @@ static uint64_t get_filesize (const char* fname)
 
 
 // Инициализация логера
-void log_init(const char* fname, uint64_t max_fsize, log_rotate_cb cb)
+void log_init(const char* fname, uint64_t max_fsize, uint max_files, log_rotate_cb cb)
 {
     if(fname) strcpy(log_fname, fname);
     else strcpy(log_fname, "");
     log_max_fsize = max_fsize;
+    max_files_num = max_files;
     log_msg(MSG_DEBUG, "Setting log_max_fsize to: %" PRIu64 " [B]\n", log_max_fsize);
     log_cb = cb;
 }
@@ -105,7 +109,7 @@ inline bool log_check_level(log_lvl_t _flags)
 // Запись сообщения в лог-файл
 void log_to_file(const char *stamp, const char *format, ...)
 {
-    if(!strcmp(log_fname, "")) return;
+    if( !strcmp(log_fname, "") || !log_max_fsize ) return;
 
     FILE* logfp = NULL;
     char str[1024] = {0};
@@ -119,10 +123,20 @@ void log_to_file(const char *stamp, const char *format, ...)
     uint64_t log_size = get_filesize(log_fname);
     //log_print("log_size: %" PRIu64 ", log_max_fsize: %" PRIu64 "\n", log_size, log_max_fsize);
 
-    if (log_max_fsize && (log_size >= log_max_fsize)){
+    if ( log_size >= log_max_fsize ){
         log_msg(MSG_VERBOSE, "------ Rotating log file ------\n");
         // call rotation callback function
         if(log_cb) log_cb();
+
+        // Процедура создания бэкапа лог-файла
+        if(max_files_num){
+            char *backup_name = NULL;
+            if(asprintf(&backup_name, "%s.%u", log_fname, curr_file_num) > 0){
+                rename(log_fname, backup_name);
+                curr_file_num = (curr_file_num >= max_files_num) ? 1 : curr_file_num + 1;
+                free(backup_name);
+            }
+        }
 
         logfp = fopen(log_fname, "w+");
         if(logfp) {
@@ -228,7 +242,7 @@ void log_hexstr (log_lvl_t flags, const void *_dump, size_t len)
 #ifdef _UNIT_TEST
 int main(int argc, char* argv[])
 {
-    log_init("logger-c.log", DFLT_FILE_SIZE, NULL);
+    log_init("logger-c.log", DFLT_FILE_SIZE, 3, NULL);
     log_set_level(MSG_DEBUG);
     const char *text = "Hello logger";
     log_msg(MSG_DEBUG | MSG_TO_FILE, "Message to stdout AND to file: %s\n", text);

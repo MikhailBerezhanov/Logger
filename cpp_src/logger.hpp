@@ -250,7 +250,7 @@ int Logging::to_file(const char *stamp, const char *fmt, Args&&... args) const
 	uint64_t file_size = Logging::get_file_size(log_fname);
 
 	// Если ошибка определения размера файла или максимальный размер превышен - перезапись файла
-    if ( !file_size || (file_size >= log_max_fsize) ){
+    if ( file_size >= log_max_fsize ){
         msg(MSG_VERBOSE, "------ Rotating log file ------\n");
         if(log_rotate) log_rotate(log_rotate_arg);
 

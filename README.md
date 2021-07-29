@@ -27,9 +27,11 @@
 * `max_fsize` - максимально-допустимый размер лог-файла в Байтах. При установке `max_fsize = 0`, перезаписывание и очистка файла не производится. Для удобства определения можно использовать предоставленные 
 макросы `_MB(x)` , `_KB(x)` осуществляющие перевод Мбайт и Кбайт в Байты соответсвенно. По умолчанию 0. 
 
+* `max_files` - максимальное количество хранимых файлов лога после ротации.
+
 * `cb` - указатель на функцию ротации лог-файлов. Вызывается при достижении файлом заданного размера  `max_fsize`, после чего файл автоматически перезаписывается. Применяется для архивации или удаления накопленных файлов-лога. `NULL` - если не используется. По умолчанию не используется. 
 
-`log_init(const char* fname, uint64_t max_fsize, log_rotate_cb cb)`
+`log_init(const char* fname, uint64_t max_fsize, uint max_files, log_rotate_cb cb)`
 
 
 ### Установка текущего уровня логирования
@@ -101,7 +103,7 @@
 
 int main(int argc, char* argv[])
 {
-    log_init("logger-c.log", DFLT_FILE_SIZE, NULL);
+    log_init("logger-c.log", DFLT_FILE_SIZE, 3, NULL);
     log_set_level(MSG_DEBUG);
     const char *text = "Hello logger";
     log_msg(MSG_DEBUG | MSG_TO_FILE, "Message to stdout AND to file: %s\n", text);

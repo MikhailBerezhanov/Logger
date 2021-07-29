@@ -81,10 +81,11 @@ typedef void (*log_rotate_cb)(void);
   *     Входные:
   *         fname - имя лог-файла или NULL
   *         max_fsize - максимально допустимый размер лог-файла (или 0 для отключения ротации)
+  *					max_files	- максимальное количество хранимых файлов лога после ротации
   *         cb - функция, вызываемая при ротации лог-файла
   * @возвращает Строку с результатом выполнения команды
  */
-void log_init(const char* fname, uint64_t max_fsize, log_rotate_cb cb);
+void log_init(const char* fname, uint64_t max_fsize, uint max_files, log_rotate_cb cb);
 
 // Типы поддерживаемых форматов штампа сообщения
 typedef enum {
