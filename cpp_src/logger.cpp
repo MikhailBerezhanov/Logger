@@ -10,7 +10,7 @@ std::recursive_timed_mutex Logging::log_file_mutex;
 
 
 // Формирование штампа сообщения
-std::string Logging::make_msg_stamp(stamp_t type, const char* module_name, const char *fmt)
+std::string Logging::make_msg_stamp(stamp_t type, const char *module_name, const char *fmt)
 {
 	if(type == no_stamp) return "";
 
@@ -59,7 +59,7 @@ uint64_t Logging::get_file_size (const std::string& fname)
 }
 
 // Дамп блока памяти в 16-ричном формате
-void Logging::hex_dump(log_lvl_t flags, const uint8_t* buf, size_t len, const char* msg_str)
+void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const char *msg_str)
 {
 	if(!check_lvl(flags)) return;
 
@@ -77,6 +77,10 @@ void Logging::hex_dump(log_lvl_t flags, const uint8_t* buf, size_t len, const ch
 	this->set_time_stamp(tmp);
 }
 
+// Для использования одного экземпляра логгера в нескольких файлах проекта
+#ifdef _SHARED_LOG
+Logging logger;
+#endif
 
 
 #ifdef _UNIT_TEST
