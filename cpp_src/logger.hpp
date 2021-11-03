@@ -349,6 +349,14 @@ __func__ + "():" + std::to_string(__LINE__) + _RESET + " " + (str) )
 	(obj).set_time_stamp(tmp); \
 }while(0)
 
+// Приватная реализация макроса для логированя предупреждений
+#define _log_warn(obj, str...)	do{ \
+	Logging::stamp_t tmp = (obj).get_time_stamp(); \
+	(obj).msg(MSG_DEBUG | MSG_TO_FILE, _YELLOW "WARN:" _RESET); \
+	(obj).set_time_stamp(Logging::no_stamp); \
+	(obj).msg(MSG_DEBUG | MSG_TO_FILE, str); \
+	(obj).set_time_stamp(tmp); \
+}while(0)
 
 // Определение макросов в зависимости от формата работы: 
 // один логер на несколько модулей или
@@ -363,11 +371,18 @@ extern Logging logger;
 	#define MODULE_NAME 	""
 #endif
 
-// Функциональный макрос Вывод отладочного сообщения с меткой времени и даты
+// Функциональный макрос вывода отладочного сообщения с меткой времени и даты
 #define log_msg(flags, str...)	do{ \
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); \
 	logger.msg(flags, str); \
+}while(0)
+
+// Функциональный макрос вывода предупреждающих сообщений
+#define log_warn(str...)	do{ \
+	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	logger.set_module_name(MODULE_NAME); \
+	_log_warn(logger, str); \
 }while(0)
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
@@ -387,6 +402,11 @@ extern Logging logger;
 #else
 
 #define log_msg(obj, flags, str...)		obj.msg(flags, str)
+
+#define log_warn(obj, str...)	do{ \
+	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	_log_warn(obj, str); \
+}
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
 #define log_err(obj, str...)	do{ \
