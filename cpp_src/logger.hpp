@@ -331,39 +331,39 @@ const char* fmt_of(T arg)
 __func__ + "():" + std::to_string(__LINE__) + _RESET + " " + (str) )
 
 //
-#define _log_msg_ns(obj, flags, str...) do{ \
-	Logging::stamp_t tmp = (obj).get_time_stamp(); \
-	(obj).set_time_stamp(Logging::no_stamp); \
-	(obj).msg(flags, str); \
-	(obj).set_time_stamp(tmp); \
+#define _log_msg_ns(obj, flags, str...) do{ 		\
+	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
+	(obj).set_time_stamp(Logging::no_stamp); 		\
+	(obj).msg(flags, str); 							\
+	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
 // Приватная реализация макроса для логированя критических ошибок с подсветкой 
-#define _log_err(obj, str...)	do{ \
-	Logging::stamp_t tmp = (obj).get_time_stamp(); \
+#define _log_err(obj, str...)	do{ 				\
+	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "Error in " _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__ ); \
-	(obj).set_time_stamp(Logging::no_stamp); \
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); \
-	(obj).set_time_stamp(tmp); \
+	(obj).set_time_stamp(Logging::no_stamp); 		\
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
+	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
 // Приватная реализация макроса для логированя системных ошибок с подсветкой описания
-#define _log_perr(obj, str...) do{ \
-	Logging::stamp_t tmp = (obj).get_time_stamp(); \
+#define _log_perr(obj, str...) do{ 					\
+	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "Perror in " _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__); \
-	(obj).set_time_stamp(Logging::no_stamp); \
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); \
+	(obj).set_time_stamp(Logging::no_stamp); 		\
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, ":%s\n", strerror(errno)); \
-	(obj).set_time_stamp(tmp); \
+	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
 // Приватная реализация макроса для логированя предупреждений
-#define _log_warn(obj, str...)	do{ \
-	Logging::stamp_t tmp = (obj).get_time_stamp(); \
+#define _log_warn(obj, str...)	do{ 				\
+	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW "WARN:" _RESET); \
-	(obj).set_time_stamp(Logging::no_stamp); \
-	(obj).msg(MSG_WARNING| MSG_TO_FILE, str); \
-	(obj).set_time_stamp(tmp); \
+	(obj).set_time_stamp(Logging::no_stamp); 		\
+	(obj).msg(MSG_WARNING| MSG_TO_FILE, str); 		\
+	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
 // Определение макросов в зависимости от формата работы: 
@@ -380,58 +380,58 @@ extern Logging logger;
 #endif
 
 // Функциональный макрос вывода отладочного сообщения с меткой времени и даты
-#define log_msg(flags, str...)	do{ \
+#define log_msg(flags, str...)	do{ 				\
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); \
-	logger.msg(flags, str); \
+	logger.set_module_name(MODULE_NAME); 			\
+	logger.msg(flags, str); 						\
 }while(0)
 
 // Вывод сообщения без штампа
-#define log_msg_ns(flags, str...) do{ \
+#define log_msg_ns(flags, str...) do{ 				\
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	_log_msg_ns(logger, flags, str); \
+	_log_msg_ns(logger, flags, str); 				\
 }while(0)
 
 // Функциональный макрос вывода предупреждающих сообщений
-#define log_warn(str...)	do{ \
+#define log_warn(str...)	do{ 					\
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); \
-	_log_warn(logger, str); \
+	logger.set_module_name(MODULE_NAME); 			\
+	_log_warn(logger, str); 						\
 }while(0)
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
-#define log_err(str...)	do{ \
+#define log_err(str...)	do{ 						\
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); \
-	_log_err(logger, str); \
+	logger.set_module_name(MODULE_NAME); 			\
+	_log_err(logger, str); 							\
 }while(0)
 
 // Функциональный макрос для логированя системных ошибок с подсветкой описания
-#define log_perr(str...) do{ \
+#define log_perr(str...) do{ 						\
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); \
-	_log_perr(logger, str); \
+	logger.set_module_name(MODULE_NAME); 			\
+	_log_perr(logger, str); 						\
 }while(0)
 
 #else
 
 #define log_msg(obj, flags, str...)		obj.msg(flags, str)
 
-#define log_warn(obj, str...)	do{ \
+#define log_warn(obj, str...)	do{ 				\
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	_log_warn(obj, str); \
+	_log_warn(obj, str); 							\
 }
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
-#define log_err(obj, str...)	do{ \
+#define log_err(obj, str...)	do{ 				\
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	_log_err(obj, str); \
+	_log_err(obj, str); 							\
 }while(0)
 
 // Функциональный макрос для логированя системных ошибок с подсветкой описания
-#define log_perr(obj, str...) do{ \
+#define log_perr(obj, str...) do{ 					\
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	_log_perr(obj, str); \
+	_log_perr(obj, str); 							\
 }while(0)
 
 #endif
