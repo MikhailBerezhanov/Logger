@@ -325,10 +325,24 @@ const char* fmt_of(T arg)
     return "";
 }
 
+inline std::string method_name(const std::string &pretty_function)
+{
+    size_t colons = pretty_function.find("::");
+    size_t begin = pretty_function.substr(0, colons).rfind(" ") + 1;
+    size_t end = pretty_function.find("(") - begin;
 
-// Функциональный макрос для формирования сообщения в месте возниковения исключения
-#define excp_msg(str) ( (std::string)_YELLOW + "Exception " + _BOLD + \
+    return pretty_function.substr(begin, end) + "()";
+}
+
+#define __METHOD_NAME__ method_name(__PRETTY_FUNCTION__)
+
+// Функциональный макрос для формирования сообщения в месте возниковения исключения функции
+#define excp_msg(str) ( (std::string)_YELLOW + "Ex! " + _BOLD + \
 __func__ + "():" + std::to_string(__LINE__) + _RESET + " " + (str) )
+
+// Функциональный макрос для формирования сообщения в месте возниковения исключения метода класса
+#define excp_method(str) ( (std::string)_YELLOW + "Ex! " + _BOLD + \
+__METHOD_NAME__ + ":" + _RESET + " " + (str) )
 
 //
 #define _log_msg_ns(obj, flags, str...) do{ 		\
