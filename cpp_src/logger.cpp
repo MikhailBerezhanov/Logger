@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
 	memset(buff, 0xBE, sizeof (buff));
 	logger.hex_dump(MSG_DEBUG, (uint8_t*)buff, sizeof (buff), "buff_hex: ");
 
-	logger.msg(MSG_DEBUG, "%s\n", excp_msg(std::string{"error description: "} + strerror(errno)));
+	logger.msg(MSG_DEBUG, "%s\n", excp_func(std::string{"error description: "} + strerror(errno)));
 
 	bool test_false = false;
 	bool test_true = true;

@@ -337,12 +337,18 @@ inline std::string method_name(const std::string &pretty_function)
 #define __METHOD_NAME__ method_name(__PRETTY_FUNCTION__)
 
 // Функциональный макрос для формирования сообщения в месте возниковения исключения функции
-#define excp_msg(str) ( (std::string)_YELLOW + "Ex! " + _BOLD + \
-__func__ + "():" + std::to_string(__LINE__) + _RESET + " " + (str) )
+#define excp_func(str) ( (std::string)__func__ + "():" + std::to_string(__LINE__) + " " + (str) )
 
 // Функциональный макрос для формирования сообщения в месте возниковения исключения метода класса
-#define excp_method(str) ( (std::string)_YELLOW + "Ex! " + _BOLD + \
-__METHOD_NAME__ + ":" + _RESET + " " + (str) )
+#define excp_method(str) ( __METHOD_NAME__ + ": " + (str) )
+
+#define _log_excp(obj, str...) do{					\
+	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX:" _RESET); \
+	(obj).set_time_stamp(Logging::no_stamp); 		\
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
+	(obj).set_time_stamp(tmp); 						\
+}while(0)
 
 //
 #define _log_msg_ns(obj, flags, str...) do{ 		\
@@ -355,7 +361,7 @@ __METHOD_NAME__ + ":" + _RESET + " " + (str) )
 // Приватная реализация макроса для логированя критических ошибок с подсветкой 
 #define _log_err(obj, str...)	do{ 				\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "Error in " _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__ ); \
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "ERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__ ); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
 	(obj).set_time_stamp(tmp); 						\
@@ -364,7 +370,7 @@ __METHOD_NAME__ + ":" + _RESET + " " + (str) )
 // Приватная реализация макроса для логированя системных ошибок с подсветкой описания
 #define _log_perr(obj, str...) do{ 					\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "Perror in " _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__); \
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "PERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, ":%s\n", strerror(errno)); \
@@ -411,6 +417,13 @@ extern Logging logger;
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
 	_log_warn(logger, str); 						\
+}while(0)
+
+// Функциональный макрос вывода сообщения об исключении
+#define log_excp(str...) do{						\
+	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	logger.set_module_name(MODULE_NAME); 			\
+	_log_excp(logger, str);							\
 }while(0)
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
