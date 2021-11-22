@@ -350,6 +350,15 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
+
+#define _log_info(obj, str...) do{					\
+	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
+	(obj).msg(MSG_INFO | MSG_TO_FILE, _YELLOW "INFO:" _RESET); \
+	(obj).set_time_stamp(Logging::no_stamp); 		\
+	(obj).msg(MSG_INFO | MSG_TO_FILE, str); 		\
+	(obj).set_time_stamp(tmp); 						\
+}while(0)
+
 //
 #define _log_msg_ns(obj, flags, str...) do{ 		\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
@@ -380,7 +389,7 @@ inline std::string method_name(const std::string &pretty_function)
 // Приватная реализация макроса для логированя предупреждений
 #define _log_warn(obj, str...)	do{ 				\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW "WARN:" _RESET); \
+	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW _BOLD "WARN:" _RESET); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_WARNING| MSG_TO_FILE, str); 		\
 	(obj).set_time_stamp(tmp); 						\
@@ -417,6 +426,13 @@ extern Logging logger;
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
 	_log_warn(logger, str); 						\
+}while(0)
+
+//
+#define log_info(str...)	do{ 					\
+	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	logger.set_module_name(MODULE_NAME); 			\
+	_log_info(logger, str); 						\
 }while(0)
 
 // Функциональный макрос вывода сообщения об исключении
