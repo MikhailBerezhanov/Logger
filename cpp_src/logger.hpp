@@ -12,6 +12,7 @@
 #include <mutex>
 #include <string>
 #include <algorithm>
+#include <functional>
 #include <typeinfo>
 #include <map>
 #include <vector>
@@ -22,7 +23,7 @@
 // Уровень сообщения для вывода
 using log_lvl_t = uint8_t;
 // Колбек ф-ия переполнения лог файла
-using log_file_rotate_cb = void (*) (void* );
+using log_file_rotate_cb = std::function<void(void*)>;
 
 // МБайты -> Байты
 constexpr uint64_t MB_to_B(uint64_t x) { return ((x) * 1048576); };
@@ -67,7 +68,7 @@ constexpr uint64_t KB_to_B(uint64_t x) { return ((x) * 1024); };
 template<typename T>
 inline auto to_c(T&& arg) -> decltype(std::forward<T>(arg)) 
 {
-    return std::forward<T>(arg);
+	return std::forward<T>(arg);
 }
 // Перегрузка шаблона для поддержки вывода std::string как С-строки по ключу %s
 inline const char* to_c(const std::string& s) { return s.c_str(); }
@@ -90,64 +91,55 @@ public:
 	}stamp_t;
 
 	Logging() = default;
-	Logging(log_lvl_t l, const std::string &n): log_lvl(l), mod_name(n) {}
+	Logging(log_lvl_t l, 
+		const std::string &mn = LOGGER_NAME,
+		const std::string &fname = "",
+		uint32_t fnum = LOG_FILE_MAX_NUM,
+		uint64_t fsize = LOG_FILE_MAX_SIZE): 
+			sets(l, mn, fname, fnum, fsize) {}
 
 	struct settings{
 		settings() = default;
-		settings(log_lvl_t l, const std::string &n = LOGGER_NAME): lvl(l), module_name(n) {}
+		settings(log_lvl_t l, 
+			const std::string &mn = LOGGER_NAME, 
+			const std::string &fname = "", 
+			uint32_t fnum = LOG_FILE_MAX_NUM,
+			uint64_t fsize = LOG_FILE_MAX_SIZE): 
+				log_lvl(l), mod_name(mn), log_fname(fname), max_files_num(fnum), log_max_fsize(fsize) {} 
 
-		log_lvl_t lvl = LOG_LVL_DEFAULT;
-		std::string file_name = "";
-		std::string module_name = LOGGER_NAME;
-		uint32_t files_num = LOG_FILE_MAX_NUM;
-		uint64_t file_size = LOG_FILE_MAX_SIZE; 
+		log_lvl_t log_lvl = LOG_LVL_DEFAULT;		// текущий уровень логирования
+		std::string mod_name = LOGGER_NAME;			// имя экземпляра логера
+		std::string log_fname = "";					// имя лог-файла
+		uint32_t max_files_num = LOG_FILE_MAX_NUM;	// максимальное число лог файлов после ротации 
+		uint64_t log_max_fsize = LOG_FILE_MAX_SIZE;	// максимальный допустимый размер лог-файла [Байт]
+		
 	};
 
-	// Установка текущего уровня логирования, параметров лог файла
-	void init(log_lvl_t lvl, 
-		const std::string &module_name = LOGGER_NAME,
-		const std::string &file_name = "", 
-		uint32_t files_num = LOG_FILE_MAX_NUM,
-		uint64_t file_size = LOG_FILE_MAX_SIZE
-		)
-	{
-		set_lvl(lvl);
-		mod_name = module_name;
-		log_fname = file_name;
-		log_max_fsize = file_size;
-		max_files_num = files_num;
-	}
-
+	// Настройка логгера во время выполнения
 	void init(log_lvl_t lvl, 
 		const std::string &file_name = "", 
 		uint32_t files_num = LOG_FILE_MAX_NUM,
-		uint64_t file_size = LOG_FILE_MAX_SIZE
-		)
+		uint64_t file_size = LOG_FILE_MAX_SIZE )
 	{
-		set_lvl(lvl);
-		log_fname = file_name;
-		log_max_fsize = file_size;
-		max_files_num = files_num;
+		std::lock_guard<std::mutex> lock(log_sets_mutex);
+		sets = {lvl, sets.mod_name, file_name, files_num, file_size};
 	}
 
 	void init(const settings &s){
-		set_lvl(s.lvl);
-		mod_name = s.module_name;
-		log_fname = s.file_name;
-		log_max_fsize = s.file_size;
-		max_files_num = s.files_num;
+		std::lock_guard<std::mutex> lock(log_sets_mutex);
+		sets = {s.log_lvl, s.mod_name, s.log_fname, s.max_files_num, s.log_max_fsize};
 	}
 
 	// Получение текущего уровня логирования
 	log_lvl_t get_lvl() const{
-		std::lock_guard<std::mutex> lock(log_lvl_mutex);
-		return log_lvl;
+		std::lock_guard<std::mutex> lock(log_sets_mutex);
+		return sets.log_lvl;
 	}
 
 	// Установка нового уровня логирования
 	void set_lvl(log_lvl_t new_lvl){
-		std::lock_guard<std::mutex> lock(log_lvl_mutex);
-		log_lvl = new_lvl;
+		std::lock_guard<std::mutex> lock(log_sets_mutex);
+		sets.log_lvl = new_lvl;
 	}
 
 	// Проверка необходимости подготовки сообщения для вывода
@@ -161,15 +153,21 @@ public:
 	}
 
 	// Получение текущего формата временного штампа сообщения
-	inline stamp_t get_time_stamp() const { return stamp_type; }
-	inline const char* get_time_stamp_fmt() const { return stamp_fmt; }
+	stamp_t get_time_stamp() const { return stamp_type; }
+	const char* get_time_stamp_fmt() const { return stamp_fmt; }
 
 	// Установка формата временного штампа сообщения ( fmt поддерживает формат strftime() )
 	void set_time_stamp(stamp_t type) { stamp_type = type; }
 	void set_time_stamp(const char *fmt) { stamp_fmt = fmt; stamp_type = custom; }
 
-	// Установка имени модуля логирования
-	void set_module_name(const std::string &new_name) { mod_name = new_name; }
+	// Установка колбека на ротацию лог-файла
+	void set_rotation_callback(log_file_rotate_cb cb, void* arg = nullptr){
+		log_rotate = cb;
+		log_rotate_arg = arg;
+	}
+
+	// Установка имени модуля 
+	void set_module_name(const std::string &new_name) { sets.mod_name = new_name; }
 
 	// Запись сообщения в лог-файл
 	template<typename... Args>
@@ -199,20 +197,16 @@ public:
 	// Мьютекс доступа к лог-файлу
 	static std::recursive_timed_mutex log_file_mutex; 
 
-	log_file_rotate_cb log_rotate = nullptr;	// колбек переполнения максимального размера лог-файта
-	void *log_rotate_arg = nullptr;				// параметр  колбек ф-ии переполнения лог-файла
-
 private:
-	log_lvl_t log_lvl = LOG_LVL_DEFAULT;		// текущий уровень логирования
-	std::string mod_name = LOGGER_NAME;			// имя экземпляра логера
-	std::string log_fname = "";					// имя лог-файла
-	uint64_t log_max_fsize = LOG_FILE_MAX_SIZE;	// максимальный допустимый размер лог-файла [Байт]
-	uint32_t max_files_num = LOG_FILE_MAX_NUM;	// максимальное число лог файлов после ротации
+	settings sets;								// Настройки логирования
 
 	const char *stamp_fmt = "[ %d.%m.%y %T ]";	// формат вывода времени в штампе сообщения
 	stamp_t stamp_type = Logging::date_time;	// тип формата вывода времени в штампе сообщения
-	mutable std::mutex log_lvl_mutex;			// мьютекс доступа к текущему уровню логирования
+	mutable std::mutex log_sets_mutex;			// мьютекс доступа к текущим настройкам 
 	mutable uint32_t curr_file_num = 1;			// текущее число лог файлов
+
+	log_file_rotate_cb log_rotate = nullptr;	// колбек переполнения максимального размера лог-файта
+	void *log_rotate_arg = nullptr;				// параметр колбек ф-ии переполнения лог-файла
 
 	// Получение текущего размера лог-файла
 	static uint64_t get_file_size (const std::string &fname);
@@ -222,47 +216,53 @@ private:
 template<typename... Args>
 int Logging::to_file(const char *stamp, const char *fmt, Args&&... args) const
 {
-	if( log_fname == "" || !log_max_fsize ) return 0;
+	if( sets.log_fname == "" || !sets.log_max_fsize ) return 0;
 
 	int ret = 0;
 	std::FILE *logfp = nullptr;
 	bool rotated = false;
 
-	// Синхронизировать доступ к файлу с таймаутом 10 мс (файл может быть недоступен)
+	// Синхронизировать доступ к файлу с таймаутом LOG_FILE_LOCK_MS мс (файл может быть недоступен)
 	std::unique_lock<std::recursive_timed_mutex> lock(log_file_mutex, std::defer_lock);
 	if(!lock.try_lock_for(std::chrono::milliseconds(LOG_FILE_LOCK_MS))) return 0;
 
-	uint64_t file_size = Logging::get_file_size(log_fname);
+	uint64_t file_size = Logging::get_file_size(sets.log_fname);
 
 	// Если ошибка определения размера файла или максимальный размер превышен - перезапись файла
-    if ( file_size >= log_max_fsize ){
-        msg(MSG_VERBOSE, "------ Rotating log file ------\n");
-        if(log_rotate) log_rotate(log_rotate_arg);
+	if( file_size >= sets.log_max_fsize ){
+		msg(MSG_VERBOSE, "------ Rotating '%s' file ------\n", sets.log_fname);
+		if(log_rotate) {
+			try{
+				log_rotate(log_rotate_arg);
+			}
+			catch(const std::exception &e){
+				msg(MSG_ERROR, "log_rotate() failed: %s\n", e.what());
+			}
+		}
 
-        // Процедура создания бэкапа лог-файла
-        if(max_files_num){
-        	std::string backup_name = log_fname + "." + std::to_string(curr_file_num);
-        	std::rename(log_fname.c_str(), backup_name.c_str());
-        	curr_file_num = (curr_file_num >= max_files_num) ? 1 : curr_file_num + 1;
-        }
+		// Процедура создания бэкапа лог-файла
+		if(sets.max_files_num){
+			std::string backup_name = sets.log_fname + "." + std::to_string(curr_file_num);
+			std::rename(sets.log_fname.c_str(), backup_name.c_str());
+			curr_file_num = (curr_file_num >= sets.max_files_num) ? 1 : curr_file_num + 1;
+		}
 
-        logfp = fopen(log_fname.c_str(), "w+");
-        rotated = true;
+		logfp = fopen(sets.log_fname.c_str(), "w+");
+		rotated = true;
     }
-    else logfp = std::fopen(log_fname.c_str(), "a+");
+	else logfp = std::fopen(sets.log_fname.c_str(), "a+");
 
-    if(logfp){
-    	if(rotated) std::fprintf(logfp, "%s ----- Log file has been rotated -----\n", stamp);
-    	if(stamp) std::fprintf(logfp, "%s ", stamp);
-        ret = std::fprintf(logfp, fmt, to_c(args)...); 
-        std::fclose(logfp);
-        
-    }
-   	else {
-   		// log_perr("Couldnt open log file '%s'", log_fname); 
-   	}  
+	if(logfp){
+		if(rotated) std::fprintf(logfp, "%s ----- Log file has been rotated -----\n", stamp);
+		if(stamp) std::fprintf(logfp, "%s ", stamp);
+		ret = std::fprintf(logfp, fmt, to_c(args)...); 
+		std::fclose(logfp);
+	}
+	else {
+		// log_perr("Couldnt open log file '%s'", sets.log_fname); 
+	}
 
-   	return ret;
+	return ret;
 }
 
 template<typename... Args>
@@ -281,10 +281,10 @@ int Logging::msg(log_lvl_t flags, const char *fmt, Args&&... args) const
 
 	// Синхронизация формирования сообщения и вывода в stdout
 	{
-		std::unique_lock<std::recursive_mutex> lock(log_print_mutex);
+		std::lock_guard<std::recursive_mutex> lock(log_print_mutex);
 
 		// Создание форматированной метаинформации о сообщении
-		msg_stamp = Logging::make_msg_stamp(stamp_type, mod_name.c_str(), stamp_fmt);
+		msg_stamp = Logging::make_msg_stamp(stamp_type, sets.mod_name.c_str(), stamp_fmt);
 
 		// Проверка уровня сообщения для вывода в терминал
 		// (игнорируем сообщения только для записи в файл и с уровнем выше заданного допустимого)
@@ -299,39 +299,39 @@ int Logging::msg(log_lvl_t flags, const char *fmt, Args&&... args) const
 		ret = this->to_file(msg_stamp.c_str(), fmt, args...);
 	}
 
-    return ret;
+	return ret;
 }
 
 template <typename T>
 const char* fmt_of(T arg)
 {
-    std::string arg_type = typeid(arg).name();
+	std::string arg_type = typeid(arg).name();
 
-    // log_msg(MSG_OVERTRACE, "%s arg_type: %s\n", __func__, arg_type);
+	// log_msg(MSG_OVERTRACE, "%s arg_type: %s\n", __func__, arg_type);
 
-    // Определение формата вывода для текущего параметра
-    if(arg_type.find("basic_string") != std::string::npos) return "%s"; // std::string
-    if(arg_type == "i") return "%d";    // int
-    if(arg_type == "l") return "%ld";   // long
-    if(arg_type == "x") return "%lld";  // long long
-    if(arg_type == "j") return "%u";    // unsigned
-    if(arg_type == "m") return "%lu";   // unsigned long
-    if(arg_type == "y") return "%llu";  // unsigned long long
-    if(arg_type == "f") return "%f";    // float
-    if(arg_type == "d") return "%f";    // double
-    if(arg_type == "e") return "%Lf";   // long double
-    if(arg_type == "b") return "%s";    // bool
+	// Определение формата вывода для текущего параметра
+	if(arg_type.find("basic_string") != std::string::npos) return "%s"; // std::string
+	if(arg_type == "i") return "%d";    // int
+	if(arg_type == "l") return "%ld";   // long
+	if(arg_type == "x") return "%lld";  // long long
+	if(arg_type == "j") return "%u";    // unsigned
+	if(arg_type == "m") return "%lu";   // unsigned long
+	if(arg_type == "y") return "%llu";  // unsigned long long
+	if(arg_type == "f") return "%f";    // float
+	if(arg_type == "d") return "%f";    // double
+	if(arg_type == "e") return "%Lf";   // long double
+	if(arg_type == "b") return "%s";    // bool
 
-    return "";
+	return "";
 }
 
 inline std::string method_name(const std::string &pretty_function)
 {
-    size_t colons = pretty_function.find("::");
-    size_t begin = pretty_function.substr(0, colons).rfind(" ") + 1;
-    size_t end = pretty_function.find("(") - begin;
+	size_t colons = pretty_function.find("::");
+	size_t begin = pretty_function.substr(0, colons).rfind(" ") + 1;
+	size_t end = pretty_function.find("(") - begin;
 
-    return pretty_function.substr(begin, end) + "()";
+	return pretty_function.substr(begin, end) + "()";
 }
 
 #define __METHOD_NAME__ method_name(__PRETTY_FUNCTION__)
@@ -342,15 +342,16 @@ inline std::string method_name(const std::string &pretty_function)
 // Функциональный макрос для формирования сообщения в месте возниковения исключения метода класса
 #define excp_method(str) ( __METHOD_NAME__ + ": " + (str) )
 
+// Для внутреннего использования - функциональный макрос формирования сообщения об Исключении
 #define _log_excp(obj, str...) do{					\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX:" _RESET); \
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX:" _RESET "(in %s)", __func__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-
+// Для внутреннего использования - функциональный макрос формирования Информационного сообщения
 #define _log_info(obj, str...) do{					\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_INFO | MSG_TO_FILE, _YELLOW "INFO:" _RESET); \
@@ -359,7 +360,7 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-//
+// Для внутреннего использования - функциональный макрос формирования сообщения без Штампа
 #define _log_msg_ns(obj, flags, str...) do{ 		\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -367,7 +368,7 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-// Приватная реализация макроса для логированя критических ошибок с подсветкой 
+// Для внутреннего использования - функциональный макрос формирования сообщения об Ошибке
 #define _log_err(obj, str...)	do{ 				\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "ERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__ ); \
@@ -376,7 +377,7 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-// Приватная реализация макроса для логированя системных ошибок с подсветкой описания
+// Для внутреннего использования - функциональный макрос формирования сообщения о Системной ошибке
 #define _log_perr(obj, str...) do{ 					\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "PERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__); \
@@ -386,7 +387,7 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-// Приватная реализация макроса для логированя предупреждений
+// Для внутреннего использования - функциональный макрос формирования Предупреждающего сообщения
 #define _log_warn(obj, str...)	do{ 				\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW _BOLD "WARN:" _RESET); \
@@ -410,48 +411,48 @@ extern Logging logger;
 
 // Функциональный макрос вывода отладочного сообщения с меткой времени и даты
 #define log_msg(flags, str...)	do{ 				\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
 	logger.msg(flags, str); 						\
 }while(0)
 
 // Вывод сообщения без штампа
 #define log_msg_ns(flags, str...) do{ 				\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	_log_msg_ns(logger, flags, str); 				\
 }while(0)
 
 // Функциональный макрос вывода предупреждающих сообщений
 #define log_warn(str...)	do{ 					\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
 	_log_warn(logger, str); 						\
 }while(0)
 
 //
 #define log_info(str...)	do{ 					\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
 	_log_info(logger, str); 						\
 }while(0)
 
 // Функциональный макрос вывода сообщения об исключении
 #define log_excp(str...) do{						\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
 	_log_excp(logger, str);							\
 }while(0)
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
 #define log_err(str...)	do{ 						\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
 	_log_err(logger, str); 							\
 }while(0)
 
 // Функциональный макрос для логированя системных ошибок с подсветкой описания
 #define log_perr(str...) do{ 						\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
 	_log_perr(logger, str); 						\
 }while(0)
@@ -461,19 +462,19 @@ extern Logging logger;
 #define log_msg(obj, flags, str...)		obj.msg(flags, str)
 
 #define log_warn(obj, str...)	do{ 				\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	_log_warn(obj, str); 							\
 }
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
 #define log_err(obj, str...)	do{ 				\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	_log_err(obj, str); 							\
 }while(0)
 
 // Функциональный макрос для логированя системных ошибок с подсветкой описания
 #define log_perr(obj, str...) do{ 					\
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	_log_perr(obj, str); 							\
 }while(0)
 

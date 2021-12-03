@@ -99,7 +99,7 @@ void printer(Logging *obj, int num, int thread_no)
 void printer_error(Logging *obj, int num, int thread_no)
 {
 	for(int i = 0; i < num; ++i){
-		log_error(*obj, "(TH.%d) #%d error message\n", thread_no, i);
+		log_err(*obj, "(TH.%d) #%d error message\n", thread_no, i);
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 
@@ -108,11 +108,11 @@ void printer_error(Logging *obj, int num, int thread_no)
 
 int main(int argc, char* argv[])
 {
-	Logging logger;
+	Logging logger(MSG_VERBOSE, "THREADS");
 
 	std::string s{"verbose msg"};
 
-	logger.init(MSG_VERBOSE, "", "Log.log", 3, KB_to_B(2));
+	logger.init(MSG_VERBOSE, "Log.log", 3, KB_to_B(2));
 
 	logger.msg(MSG_VERBOSE, "MESSAGE CONST CHAR TEST\n");
 
@@ -128,9 +128,9 @@ int main(int argc, char* argv[])
 	logger.msg(MSG_TRACE | MSG_TO_FILE, "%s\n", "MESSAGE TO FILE ONLY");
 
 	s = "fucked_up";
-	log_error(logger, "string error test: %s\n", s);
+	log_err(logger, "string error test: %s\n", s);
 
-	log_error(logger, "const char error test\n");
+	log_err(logger, "const char error test\n");
 
 	log_perr(logger, "system call failed (%s)", s);
 
@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
 	// fmt_of(bval);   	// b
 
 	logger.set_time_stamp(Logging::ms_time);
-	logger.set_module_name("THREADS");
+	
     logger.msg(MSG_DEBUG | MSG_TO_FILE, "Starting thread(s)\n");
     // std::unique_lock<std::recursive_timed_mutex> lock(Log::log_file_mutex);
 
