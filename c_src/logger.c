@@ -239,7 +239,7 @@ void log_hexstr (log_lvl_t flags, const void *_dump, size_t len)
 }
 
 
-#ifdef _UNIT_TEST
+#ifdef _LOGGER_TEST
 int main(int argc, char* argv[])
 {
     log_init("logger-c.log", DFLT_FILE_SIZE, 3, NULL);

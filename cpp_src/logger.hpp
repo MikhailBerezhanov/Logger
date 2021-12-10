@@ -167,7 +167,10 @@ public:
 	}
 
 	// Установка имени модуля 
-	void set_module_name(const std::string &new_name) { sets.mod_name = new_name; }
+	void set_module_name(const std::string &new_name) { 
+		// std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex);
+		sets.mod_name = new_name; 
+	}
 
 	// Запись сообщения в лог-файл
 	template<typename... Args>
@@ -342,8 +345,18 @@ inline std::string method_name(const std::string &pretty_function)
 // Функциональный макрос для формирования сообщения в месте возниковения исключения метода класса
 #define excp_method(str) ( __METHOD_NAME__ + ": " + (str) )
 
-// Для внутреннего использования - функциональный макрос формирования сообщения об Исключении
-#define _log_excp(obj, str...) do{					\
+// Функциональный макрос формирования сообщения без Штампа
+#define logging_msg_ns(obj, flags, str...) do{ 		\
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
+	(obj).set_time_stamp(Logging::no_stamp); 		\
+	(obj).msg(flags, str); 							\
+	(obj).set_time_stamp(tmp); 						\
+}while(0)
+
+// Функциональный макрос формирования сообщения об Исключении
+#define logging_excp(obj, str...) do{				\
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX:" _RESET "(in %s)", __func__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -351,8 +364,19 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-// Для внутреннего использования - функциональный макрос формирования Информационного сообщения
-#define _log_info(obj, str...) do{					\
+// Функциональный макрос формирования Предупреждающего сообщения
+#define logging_warn(obj, str...)	do{ 				\
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
+	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW _BOLD "WARN:" _RESET); \
+	(obj).set_time_stamp(Logging::no_stamp); 		\
+	(obj).msg(MSG_WARNING| MSG_TO_FILE, str); 		\
+	(obj).set_time_stamp(tmp); 						\
+}while(0)
+
+// Функциональный макрос формирования Информационного сообщения
+#define logging_info(obj, str...) do{				\
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_INFO | MSG_TO_FILE, _YELLOW "INFO:" _RESET); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -360,16 +384,9 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-// Для внутреннего использования - функциональный макрос формирования сообщения без Штампа
-#define _log_msg_ns(obj, flags, str...) do{ 		\
-	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).set_time_stamp(Logging::no_stamp); 		\
-	(obj).msg(flags, str); 							\
-	(obj).set_time_stamp(tmp); 						\
-}while(0)
-
-// Для внутреннего использования - функциональный макрос формирования сообщения об Ошибке
-#define _log_err(obj, str...)	do{ 				\
+// Функциональный макрос формирования сообщения об Ошибке
+#define logging_err(obj, str...)	do{ 			\
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "ERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__ ); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -377,8 +394,9 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-// Для внутреннего использования - функциональный макрос формирования сообщения о Системной ошибке
-#define _log_perr(obj, str...) do{ 					\
+// Функциональный макрос формирования сообщения о Системной ошибке
+#define logging_perr(obj, str...) do{ 				\
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "PERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -387,14 +405,7 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-// Для внутреннего использования - функциональный макрос формирования Предупреждающего сообщения
-#define _log_warn(obj, str...)	do{ 				\
-	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW _BOLD "WARN:" _RESET); \
-	(obj).set_time_stamp(Logging::no_stamp); 		\
-	(obj).msg(MSG_WARNING| MSG_TO_FILE, str); 		\
-	(obj).set_time_stamp(tmp); 						\
-}while(0)
+
 
 // Определение макросов в зависимости от формата работы: 
 // один логер на несколько модулей или
@@ -419,66 +430,45 @@ extern Logging logger;
 // Вывод сообщения без штампа
 #define log_msg_ns(flags, str...) do{ 				\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	_log_msg_ns(logger, flags, str); 				\
+	logging_msg_ns(logger, flags, str); 			\
 }while(0)
 
 // Функциональный макрос вывода предупреждающих сообщений
 #define log_warn(str...)	do{ 					\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
-	_log_warn(logger, str); 						\
+	logging_warn(logger, str); 						\
 }while(0)
 
 //
 #define log_info(str...)	do{ 					\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
-	_log_info(logger, str); 						\
+	logging_info(logger, str); 						\
 }while(0)
 
 // Функциональный макрос вывода сообщения об исключении
 #define log_excp(str...) do{						\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
-	_log_excp(logger, str);							\
+	logging_excp(logger, str);						\
 }while(0)
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
 #define log_err(str...)	do{ 						\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
-	_log_err(logger, str); 							\
+	logging_err(logger, str); 						\
 }while(0)
 
 // Функциональный макрос для логированя системных ошибок с подсветкой описания
 #define log_perr(str...) do{ 						\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	logger.set_module_name(MODULE_NAME); 			\
-	_log_perr(logger, str); 						\
+	logging_perr(logger, str); 						\
 }while(0)
 
-#else
-
-#define log_msg(obj, flags, str...)		obj.msg(flags, str)
-
-#define log_warn(obj, str...)	do{ 				\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	_log_warn(obj, str); 							\
-}
-
-// Функциональный макрос для логированя с подсветкой критических ошибок
-#define log_err(obj, str...)	do{ 				\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	_log_err(obj, str); 							\
-}while(0)
-
-// Функциональный макрос для логированя системных ошибок с подсветкой описания
-#define log_perr(obj, str...) do{ 					\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	_log_perr(obj, str); 							\
-}while(0)
-
-#endif
-
+#endif		/* #ifdef _SHARED_LOG */
+// #else 	/* #ifdef _SHARED_LOG */
 
 #endif

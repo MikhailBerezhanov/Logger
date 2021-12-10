@@ -26,10 +26,10 @@ prep:
 	@if test ! -d $(TESTS_DIR); then mkdir $(TESTS_DIR); fi
 
 logger-cpp: prep
-	@$(CCPP) $(CPP_DIR)/logger.cpp -D_UNIT_TEST -o $(CPP_TEST_BIN) -lpthread
+	@$(CCPP) $(CPP_DIR)/logger.cpp -D_LOGGER_TEST -o $(CPP_TEST_BIN) -lpthread
 
 logger-c: prep
-	@$(CC) $(C_DIR)/logger.c -D_UNIT_TEST -D_GNU_SOURCE=1 -o $(C_TEST_BIN)
+	@$(CC) $(C_DIR)/logger.c -D_LOGGER_TEST -D_GNU_SOURCE=1 -o $(C_TEST_BIN)
 
 clean:
 	@rm -f $(C_TEST_BIN) $(CPP_TEST_BIN)

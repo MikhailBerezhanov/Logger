@@ -83,7 +83,7 @@ Logging logger;
 #endif
 
 
-#ifdef _UNIT_TEST
+#ifdef _LOGGER_TEST
 #include <thread>
 
 void printer(Logging *obj, int num, int thread_no)
@@ -99,7 +99,7 @@ void printer(Logging *obj, int num, int thread_no)
 void printer_error(Logging *obj, int num, int thread_no)
 {
 	for(int i = 0; i < num; ++i){
-		log_err(*obj, "(TH.%d) #%d error message\n", thread_no, i);
+		logging_err(*obj, "(TH.%d) #%d error message\n", thread_no, i);
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 
@@ -128,11 +128,11 @@ int main(int argc, char* argv[])
 	logger.msg(MSG_TRACE | MSG_TO_FILE, "%s\n", "MESSAGE TO FILE ONLY");
 
 	s = "fucked_up";
-	log_err(logger, "string error test: %s\n", s);
+	logging_err(logger, "string error test: %s\n", s);
 
-	log_err(logger, "const char error test\n");
+	logging_err(logger, "const char error test\n");
 
-	log_perr(logger, "system call failed (%s)", s);
+	logging_perr(logger, "system call failed (%s)", s);
 
 	char buff[40];
 	memset(buff, 0xBE, sizeof (buff));
