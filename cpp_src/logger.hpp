@@ -195,24 +195,23 @@ public:
 	// Формирование штампа сообщения
 	static std::string make_msg_stamp(stamp_t type, const char *module_name, const char *fmt = "");
 
-	// Мьютекс для целостного вывода комбинированных сообщений в stdout
+	// Мьютекс для целостного вывода сообщений в stdout (в том числе комбинированных)
 	static std::recursive_mutex log_print_mutex; 
-	// Мьютекс доступа к лог-файлу
-	static std::recursive_timed_mutex log_file_mutex; 
-
+	
 private:
 	settings sets;								// Настройки логирования
 
-	const char *stamp_fmt = "[ %d.%m.%y %T ]";	// формат вывода времени в штампе сообщения
-	stamp_t stamp_type = Logging::date_time;	// тип формата вывода времени в штампе сообщения
-	mutable std::mutex log_sets_mutex;			// мьютекс доступа к текущим настройкам 
-	mutable uint32_t curr_file_num = 1;			// текущее число лог файлов
+	const char *stamp_fmt = "[ %d.%m.%y %T ]";	// Формат вывода времени в штампе сообщения
+	stamp_t stamp_type = Logging::date_time;	// Тип формата вывода времени в штампе сообщения
+	mutable std::mutex log_sets_mutex;			// Мьютекс доступа к текущим настройкам 
+	mutable std::recursive_timed_mutex log_file_mutex;	// Мьютекс доступа к лог-файлу
+	mutable uint32_t curr_file_num = 1;			// Текущее число лог файлов
 
-	log_file_rotate_cb log_rotate = nullptr;	// колбек переполнения максимального размера лог-файта
-	void *log_rotate_arg = nullptr;				// параметр колбек ф-ии переполнения лог-файла
+	log_file_rotate_cb log_rotate = nullptr;	// Колбек переполнения максимального размера лог-файта
+	void *log_rotate_arg = nullptr;				// Параметр колбек ф-ии переполнения лог-файла
 
 	// Получение текущего размера лог-файла
-	static uint64_t get_file_size (const std::string &fname);
+	static uint64_t get_file_size(const std::string &fname);
 };
 
 

@@ -6,7 +6,7 @@
 
 // Инициализация статических членов класса
 std::recursive_mutex Logging::log_print_mutex;
-std::recursive_timed_mutex Logging::log_file_mutex;
+// std::recursive_timed_mutex Logging::log_file_mutex;
 
 
 // Формирование штампа сообщения
