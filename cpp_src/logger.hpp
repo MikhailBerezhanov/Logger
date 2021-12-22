@@ -195,6 +195,9 @@ public:
 	// Формирование штампа сообщения
 	static std::string make_msg_stamp(stamp_t type, const char *module_name, const char *fmt = "");
 
+	// Добивка строки до нужного размера символами pad и централизация
+	static std::string padding(int col_size, const std::string &s, const char pad = ' ');
+
 	// Мьютекс для целостного вывода сообщений в stdout (в том числе комбинированных)
 	static std::recursive_mutex log_print_mutex; 
 	

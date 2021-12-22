@@ -77,6 +77,18 @@ void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const ch
 	this->set_time_stamp(tmp);
 }
 
+std::string Logging::padding(int col_size, const std::string &s, const char pad)
+{
+	int pad_num = col_size - s.size();
+	if(pad_num < 0) return s;
+
+	std::string::size_type indent_left = pad_num / 2;
+	std::string::size_type indent_right(indent_left);
+	if(pad_num % 2) ++indent_right;
+
+	return (std::string(indent_left, pad) + s + std::string(indent_right, pad));
+}
+
 // Для использования одного экземпляра логгера в нескольких файлах проекта
 #ifdef _SHARED_LOG
 Logging logger;
