@@ -166,10 +166,12 @@ public:
 		log_rotate_arg = arg;
 	}
 
-	// Установка имени модуля 
+	// Установка имени модуля при использовании общего логгирования
 	void set_module_name(const std::string &new_name) { 
 		// std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex);
+		#ifdef _SHARED_LOG
 		sets.mod_name = new_name; 
+		#endif
 	}
 
 	// Запись сообщения в лог-файл
@@ -347,6 +349,20 @@ inline std::string method_name(const std::string &pretty_function)
 // Функциональный макрос для формирования сообщения в месте возниковения исключения метода класса
 #define excp_method(str) ( __METHOD_NAME__ + ": " + (str) )
 
+// Название модуля при подключении логера для штампа сообщений
+#ifdef LOG_MODULE_NAME
+	#define MODULE_NAME 	LOG_MODULE_NAME	
+#else
+	#define MODULE_NAME 	""
+#endif
+
+// Функциональный макрос формирования сообщения
+#define logging_msg(obj, flags, str...) do{			\
+	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	(obj).set_module_name(MODULE_NAME); 			\
+	(obj).msg(flags, str); 							\
+}while(0)
+
 // Функциональный макрос формирования сообщения без Штампа
 #define logging_msg_ns(obj, flags, str...) do{ 		\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
@@ -359,6 +375,7 @@ inline std::string method_name(const std::string &pretty_function)
 // Функциональный макрос формирования сообщения об Исключении
 #define logging_excp(obj, str...) do{				\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX:" _RESET "(in %s)", __func__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -369,6 +386,7 @@ inline std::string method_name(const std::string &pretty_function)
 // Функциональный макрос формирования Предупреждающего сообщения
 #define logging_warn(obj, str...)	do{ 				\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW _BOLD "WARN:" _RESET); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -379,6 +397,7 @@ inline std::string method_name(const std::string &pretty_function)
 // Функциональный макрос формирования Информационного сообщения
 #define logging_info(obj, str...) do{				\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_INFO | MSG_TO_FILE, _YELLOW "INFO:" _RESET); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -389,6 +408,7 @@ inline std::string method_name(const std::string &pretty_function)
 // Функциональный макрос формирования сообщения об Ошибке
 #define logging_err(obj, str...)	do{ 			\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "ERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__ ); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -399,6 +419,7 @@ inline std::string method_name(const std::string &pretty_function)
 // Функциональный макрос формирования сообщения о Системной ошибке
 #define logging_perr(obj, str...) do{ 				\
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
+	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "PERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
@@ -415,62 +436,29 @@ inline std::string method_name(const std::string &pretty_function)
 #ifdef _SHARED_LOG
 extern Logging logger;
 
-// Название модуля при подключении логера для штампа сообщений
-#ifdef LOG_MODULE_NAME
-	#define MODULE_NAME 	LOG_MODULE_NAME	
-#else
-	#define MODULE_NAME 	""
-#endif
-
 // Функциональный макрос вывода отладочного сообщения с меткой времени и даты
-#define log_msg(flags, str...)	do{ 				\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); 			\
-	logger.msg(flags, str); 						\
-}while(0)
+#define log_msg(flags, str...)		logging_msg(logger, flags, str)
 
 // Вывод сообщения без штампа
-#define log_msg_ns(flags, str...) do{ 				\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logging_msg_ns(logger, flags, str); 			\
-}while(0)
+#define log_msg_ns(flags, str...) 	logging_msg_ns(logger, flags, str)
 
 // Функциональный макрос вывода предупреждающих сообщений
-#define log_warn(str...)	do{ 					\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); 			\
-	logging_warn(logger, str); 						\
-}while(0)
+#define log_warn(str...)			logging_warn(logger, str)
 
 //
-#define log_info(str...)	do{ 					\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); 			\
-	logging_info(logger, str); 						\
-}while(0)
+#define log_info(str...)			logging_info(logger, str)
+
 
 // Функциональный макрос вывода сообщения об исключении
-#define log_excp(str...) do{						\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); 			\
-	logging_excp(logger, str);						\
-}while(0)
+#define log_excp(str...) 			logging_excp(logger, str);
+
 
 // Функциональный макрос для логированя с подсветкой критических ошибок
-#define log_err(str...)	do{ 						\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); 			\
-	logging_err(logger, str); 						\
-}while(0)
+#define log_err(str...)				logging_err(logger, str)
 
 // Функциональный макрос для логированя системных ошибок с подсветкой описания
-#define log_perr(str...) do{ 						\
-	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
-	logger.set_module_name(MODULE_NAME); 			\
-	logging_perr(logger, str); 						\
-}while(0)
+#define log_perr(str...) 			logging_perr(logger, str)
 
 #endif		/* #ifdef _SHARED_LOG */
-// #else 	/* #ifdef _SHARED_LOG */
 
 #endif
