@@ -59,7 +59,7 @@ uint64_t Logging::get_file_size (const std::string& fname)
 }
 
 // Дамп блока памяти в 16-ричном формате
-void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const char *msg_str)
+void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const char *msg_str, uint8_t delim)
 {
 	if(!check_lvl(flags)) return;
 
@@ -67,10 +67,10 @@ void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const ch
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex);
 
 	Logging::stamp_t tmp = this->get_time_stamp();
-	msg(flags, "%s\n\t",  msg_str);
+	msg(flags, "%s ",  msg_str);
 	this->set_time_stamp(Logging::no_stamp);
 	for(size_t i = 0; i < len; ++i){
-		if(i && i % 16 == 0) msg(flags, "\n\t");
+		if(i && (i % delim == 0)) msg(flags, "\n\t");
 		msg(flags, "%02X ", buf[i]);
 	}
 	msg(flags, "\n");
