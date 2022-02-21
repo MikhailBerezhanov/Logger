@@ -1,6 +1,7 @@
-
 #include <ctime>
 #include <sys/stat.h>
+#include <sstream>
+#include <iterator>
 
 #include "logger.hpp"
 
@@ -29,7 +30,7 @@ std::string Logging::make_msg_stamp(stamp_t type, const char *module_name, const
         case only_time: strftime(time_str, sizeof time_str, "[ %T ]", &timeinfo); break;
         case ms_time: {
             strftime(time_str, sizeof time_str, "%d.%m.%y %T", &timeinfo); 
-            char buf[64] = {0};
+            char buf[80] = {0};
             snprintf(buf, sizeof buf, "[ %s.%03lu ] %s", time_str, spec.tv_nsec / 1000000L, module_name);
             std::string s {buf};
             return s;
@@ -59,32 +60,51 @@ uint64_t Logging::get_file_size (const std::string& fname)
 }
 
 // Дамп блока памяти в 16-ричном формате
+#define print_dump(flags, msg_str, container, len) do{ 							\
+	Logging::stamp_t tmp = this->get_time_stamp();								\
+	msg(flags, "%s",  msg_str);													\
+	this->set_time_stamp(Logging::no_stamp);									\
+	for(size_t i = 0; i < len; ++i){											\
+		if(i % delim == 0) msg(flags, "\n\t");									\
+		msg(flags, "%02X%s", container[i], (((i + 1) % 8) == 0) ? "  " : " ");	\
+	}																			\
+	msg(flags, "\n");															\
+	this->set_time_stamp(tmp);													\
+}while(0)
+
 void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const char *msg_str, uint8_t delim)
 {
-	if(!check_lvl(flags)) return;
+	if( !check_lvl(flags) ){
+		return;
+	} 
 
 	// Синхронизация вывода
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex);
+	print_dump(flags, msg_str, buf, len);
+}
 
-	Logging::stamp_t tmp = this->get_time_stamp();
-	msg(flags, "%s ",  msg_str);
-	this->set_time_stamp(Logging::no_stamp);
-	for(size_t i = 0; i < len; ++i){
-		if(i && (i % delim == 0)) msg(flags, "\n\t");
-		msg(flags, "%02X ", buf[i]);
-	}
-	msg(flags, "\n");
-	this->set_time_stamp(tmp);
+void Logging::hex_dump(log_lvl_t flags, const std::vector<char> &vec, size_t len, const std::string &msg_str, uint8_t delim)
+{
+	if( !check_lvl(flags) ){
+		return;
+	} 
+
+	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex);
+	print_dump(flags, msg_str, vec, len);
 }
 
 std::string Logging::padding(int col_size, const std::string &s, const char pad)
 {
 	int pad_num = col_size - s.size();
-	if(pad_num < 0) return s;
+	if(pad_num < 0){
+		return s;
+	} 
 
 	std::string::size_type indent_left = pad_num / 2;
 	std::string::size_type indent_right(indent_left);
-	if(pad_num % 2) ++indent_right;
+	if(pad_num % 2){
+		++indent_right;
+	} 
 
 	return (std::string(indent_left, pad) + s + std::string(indent_right, pad));
 }

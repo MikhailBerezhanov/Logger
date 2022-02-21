@@ -193,6 +193,7 @@ public:
 
 	// Дамп блока памяти в 16-ричном формате
 	void hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const char *msg = "", uint8_t delim = 16);
+	void hex_dump(log_lvl_t flags, const std::vector<char> &vec, size_t len, const std::string &msg_str = "", uint8_t delim = 16);
 
 	// Формирование штампа сообщения
 	static std::string make_msg_stamp(stamp_t type, const char *module_name, const char *fmt = "");
