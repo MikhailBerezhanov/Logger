@@ -192,8 +192,8 @@ public:
 	}
 
 	// Дамп блока памяти в 16-ричном формате
-	void hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const char *msg = "", uint8_t delim = 16);
-	void hex_dump(log_lvl_t flags, const std::vector<char> &vec, size_t len, const std::string &msg_str = "", uint8_t delim = 16);
+	void hex_dump(log_lvl_t flags, const char *buf, size_t len, const std::string &msg_str = "", uint8_t delim = 16);
+	void hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const std::string &msg = "", uint8_t delim = 16);
 
 	// Формирование штампа сообщения
 	static std::string make_msg_stamp(stamp_t type, const char *module_name, const char *fmt = "");
@@ -429,7 +429,11 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-
+//
+#define logging_hexdump(obj, flags, buf, len, msg) do{	\
+	(obj).set_module_name(MODULE_NAME);				\
+	(obj).hex_dump(flags, buf, len, msg);			\
+}while(0)
 
 // Определение макросов в зависимости от формата работы: 
 // один логер на несколько модулей или
@@ -459,6 +463,9 @@ extern Logging logger;
 
 // Функциональный макрос для логированя системных ошибок с подсветкой описания
 #define log_perr(str...) 			logging_perr(logger, str)
+
+//
+#define log_hexdump(flags, buf, len, msg)	logging_hexdump(logger, flags, buf, len, msg)
 
 #endif		/* #ifdef _SHARED_LOG */
 

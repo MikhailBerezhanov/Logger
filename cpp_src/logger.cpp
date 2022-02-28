@@ -60,19 +60,12 @@ uint64_t Logging::get_file_size (const std::string& fname)
 }
 
 // Дамп блока памяти в 16-ричном формате
-#define print_dump(flags, msg_str, container, len) do{ 							\
-	Logging::stamp_t tmp = this->get_time_stamp();								\
-	msg(flags, "%s",  msg_str);													\
-	this->set_time_stamp(Logging::no_stamp);									\
-	for(size_t i = 0; i < len; ++i){											\
-		if(i % delim == 0) msg(flags, "\n\t");									\
-		msg(flags, "%02X%s", container[i], (((i + 1) % 8) == 0) ? "  " : " ");	\
-	}																			\
-	msg(flags, "\n");															\
-	this->set_time_stamp(tmp);													\
-}while(0)
+void Logging::hex_dump(log_lvl_t flags, const char *buf, size_t len, const std::string &msg_str, uint8_t delim)
+{
+	hex_dump(flags, reinterpret_cast<const uint8_t*>(buf), len, msg_str, delim);
+}
 
-void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const char *msg_str, uint8_t delim)
+void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const std::string &msg_str, uint8_t delim)
 {
 	if( !check_lvl(flags) ){
 		return;
@@ -80,17 +73,16 @@ void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const ch
 
 	// Синхронизация вывода
 	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex);
-	print_dump(flags, msg_str, buf, len);
-}
 
-void Logging::hex_dump(log_lvl_t flags, const std::vector<char> &vec, size_t len, const std::string &msg_str, uint8_t delim)
-{
-	if( !check_lvl(flags) ){
-		return;
-	} 
-
-	std::unique_lock<std::recursive_mutex> lock(Logging::log_print_mutex);
-	print_dump(flags, msg_str, vec, len);
+	Logging::stamp_t tmp = this->get_time_stamp();
+	msg(flags, "%s",  msg_str);	
+	this->set_time_stamp(Logging::no_stamp);
+	for(size_t i = 0; i < len; ++i){
+		if(i % delim == 0) msg(flags, "\n\t");
+		msg(flags, "%02X%s", buf[i], (((i + 1) % 8) == 0) ? "  " : " ");
+	}
+	msg(flags, "\n");
+	this->set_time_stamp(tmp);
 }
 
 std::string Logging::padding(int col_size, const std::string &s, const char pad)
