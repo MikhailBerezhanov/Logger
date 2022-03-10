@@ -196,7 +196,7 @@ public:
 	void hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const std::string &msg = "", uint8_t delim = 16);
 
 	// Формирование штампа сообщения
-	static std::string make_msg_stamp(stamp_t type, const char *module_name, const char *fmt = "");
+	static std::string make_msg_stamp(stamp_t type, const std::string &module_name, const char *fmt = "");
 
 	// Добивка строки до нужного размера символами pad и централизация
 	static std::string padding(int col_size, const std::string &s, const char pad = ' ');
@@ -292,12 +292,12 @@ int Logging::msg(log_lvl_t flags, const char *fmt, Args&&... args) const
 		std::lock_guard<std::recursive_mutex> lock(log_print_mutex);
 
 		// Создание форматированной метаинформации о сообщении
-		msg_stamp = Logging::make_msg_stamp(stamp_type, sets.mod_name.c_str(), stamp_fmt);
+		msg_stamp = Logging::make_msg_stamp(stamp_type, sets.mod_name, stamp_fmt);
 
 		// Проверка уровня сообщения для вывода в терминал
 		// (игнорируем сообщения только для записи в файл и с уровнем выше заданного допустимого)
 		if(msg_lvl && msg_lvl <= curr_lvl){
-			std::printf("%s ", msg_stamp.c_str());
+			std::printf("%s", msg_stamp.c_str());
 			ret = std::printf(fmt, to_c(args)...);
 		}
 	}
@@ -378,7 +378,7 @@ inline std::string method_name(const std::string &pretty_function)
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX:" _RESET "(in %s)", __func__); \
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX: " _RESET "(in %s)", __func__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
 	(obj).set_time_stamp(tmp); 						\
@@ -389,7 +389,7 @@ inline std::string method_name(const std::string &pretty_function)
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW _BOLD "WARN:" _RESET); \
+	(obj).msg(MSG_WARNING | MSG_TO_FILE, _YELLOW _BOLD "WARN: " _RESET); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_WARNING| MSG_TO_FILE, str); 		\
 	(obj).set_time_stamp(tmp); 						\
@@ -400,7 +400,7 @@ inline std::string method_name(const std::string &pretty_function)
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_INFO | MSG_TO_FILE, _YELLOW "INFO:" _RESET); \
+	(obj).msg(MSG_INFO | MSG_TO_FILE, _YELLOW "INFO: " _RESET); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_INFO | MSG_TO_FILE, str); 		\
 	(obj).set_time_stamp(tmp); 						\
@@ -411,7 +411,7 @@ inline std::string method_name(const std::string &pretty_function)
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "ERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__ ); \
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "ERR: " _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__ ); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
 	(obj).set_time_stamp(tmp); 						\
@@ -422,7 +422,7 @@ inline std::string method_name(const std::string &pretty_function)
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "PERR:" _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__); \
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED _BOLD "PERR: " _BOLD "%s %s():%d " _RESET, __FILE__, __func__, __LINE__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, ":%s\n", strerror(errno)); \

@@ -11,7 +11,7 @@ std::recursive_mutex Logging::log_print_mutex;
 
 
 // Формирование штампа сообщения
-std::string Logging::make_msg_stamp(stamp_t type, const char *module_name, const char *fmt)
+std::string Logging::make_msg_stamp(stamp_t type, const std::string &module_name, const char *fmt)
 {
 	if(type == no_stamp) return "";
 
@@ -31,7 +31,7 @@ std::string Logging::make_msg_stamp(stamp_t type, const char *module_name, const
         case ms_time: {
             strftime(time_str, sizeof time_str, "%d.%m.%y %T", &timeinfo); 
             char buf[80] = {0};
-            snprintf(buf, sizeof buf, "[ %s.%03lu ] %s", time_str, spec.tv_nsec / 1000000L, module_name);
+            snprintf(buf, sizeof buf, "[ %s.%03lu ] %s", time_str, spec.tv_nsec / 1000000L, module_name.c_str());
             std::string s {buf};
             return s;
         }
@@ -43,9 +43,8 @@ std::string Logging::make_msg_stamp(stamp_t type, const char *module_name, const
             strftime(time_str, sizeof time_str, "[ %d.%m.%y %T ]", &timeinfo); break;
     }
 
-
 	std::string s {time_str};
-	s += module_name; 
+	s += module_name + " "; 
 
 	return s;
 }
