@@ -262,7 +262,7 @@ int Logging::to_file(const char *stamp, const char *fmt, Args&&... args) const
 
 	if(logfp){
 		if(rotated) std::fprintf(logfp, "%s ----- Log file has been rotated -----\n", stamp);
-		if(stamp) std::fprintf(logfp, "%s ", stamp);
+		if(stamp) std::fprintf(logfp, "%s", stamp);
 		ret = std::fprintf(logfp, fmt, to_c(args)...); 
 		std::fclose(logfp);
 	}
@@ -429,42 +429,40 @@ inline std::string method_name(const std::string &pretty_function)
 	(obj).set_time_stamp(tmp); 						\
 }while(0)
 
-//
+// Функциональный макрос вывода дампа массива байт
 #define logging_hexdump(obj, flags, buf, len, msg) do{	\
 	(obj).set_module_name(MODULE_NAME);				\
 	(obj).hex_dump(flags, buf, len, msg);			\
 }while(0)
 
-// Определение макросов в зависимости от формата работы: 
-// один логер на несколько модулей или
-// у каждого модуля свой собственный экземпляр
+// Логер может работать в разделяемом между разными файлами (модулями) режиме
+// с использование глобального объекта logger
+// Следующие макросы используют разделяемый логер для вывода сообщений
 #ifdef _SHARED_LOG
 extern Logging logger;
 
-// Функциональный макрос вывода отладочного сообщения с меткой времени и даты
+// Вывод сообщения с меткой времени и даты
 #define log_msg(flags, str...)		logging_msg(logger, flags, str)
 
 // Вывод сообщения без штампа
 #define log_msg_ns(flags, str...) 	logging_msg_ns(logger, flags, str)
 
-// Функциональный макрос вывода предупреждающих сообщений
+// Вывод предупреждающих сообщений
 #define log_warn(str...)			logging_warn(logger, str)
 
-//
+// Вывод информационных сообщений
 #define log_info(str...)			logging_info(logger, str)
 
-
-// Функциональный макрос вывода сообщения об исключении
+// Вывод сообщения об исключении
 #define log_excp(str...) 			logging_excp(logger, str);
 
-
-// Функциональный макрос для логированя с подсветкой критических ошибок
+// Логирование критических ошибок с подсветкой описания
 #define log_err(str...)				logging_err(logger, str)
 
-// Функциональный макрос для логированя системных ошибок с подсветкой описания
+// Логирование системных ошибок с подсветкой описания
 #define log_perr(str...) 			logging_perr(logger, str)
 
-//
+// Вывод дампа буфера байт
 #define log_hexdump(flags, buf, len, msg)	logging_hexdump(logger, flags, buf, len, msg)
 
 #endif		/* #ifdef _SHARED_LOG */
