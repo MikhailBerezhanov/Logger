@@ -378,7 +378,7 @@ inline std::string method_name(const std::string &pretty_function)
 	std::lock_guard<std::recursive_mutex> lock(Logging::log_print_mutex); \
 	(obj).set_module_name(MODULE_NAME); 			\
 	Logging::stamp_t tmp = (obj).get_time_stamp(); 	\
-	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX: " _RESET "(in %s)", __func__); \
+	(obj).msg(MSG_ERROR | MSG_TO_FILE, _RED "EX: " _RESET "(in %s) ", __func__); \
 	(obj).set_time_stamp(Logging::no_stamp); 		\
 	(obj).msg(MSG_ERROR | MSG_TO_FILE, str); 		\
 	(obj).set_time_stamp(tmp); 						\
