@@ -86,7 +86,15 @@ void Logging::hex_dump(log_lvl_t flags, const uint8_t *buf, size_t len, const st
 
 std::string Logging::padding(int col_size, const std::string &s, const char pad)
 {
-	int pad_num = col_size - s.size();
+	// Проверяем используют ASCII (однобайтовые) символы или же двухбайтовые 
+	int two_bytes_char = 0;
+	for(const unsigned char &c : s){
+		if((c == 0xD0) || (c == 0xD1)){
+			++two_bytes_char;
+		}
+	}
+
+	int pad_num = col_size - s.size() + two_bytes_char;
 	if(pad_num < 0){
 		return s;
 	} 
