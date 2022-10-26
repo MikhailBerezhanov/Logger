@@ -18,7 +18,7 @@
 #include <vector>
 
 // Название модуля логирования по умолчанию
-#define LOGGER_NAME 		"[ LOGGER ]"
+#define LOGGER_NAME 		""
 
 // Уровень сообщения для вывода
 using log_lvl_t = uint8_t;
