@@ -1,17 +1,14 @@
-CCPP=g++
-CC=gcc
-CFLAGS=-Wall -Wno-format-security -Wno-unused-variable -Wno-unused-function
+# Using compilers from environment settings
+#CXX=g++
+#CC=gcc
+CFLAGS=-Wall -O2
 
-# PATHS
+# Paths
 SRC_DIR = .
 INCLUDES = -I$(SRC_DIR)
 C_DIR = $(SRC_DIR)/c_src
 CPP_DIR = $(SRC_DIR)/cpp_src
 
-LLIBS=-lpthread
-
-TARGET_BIN_DIR = ./bin
-TARGET_OBJ_DIR = ./obj
 TESTS_DIR=./tests
 
 C_TEST_BIN=$(TESTS_DIR)/logger-c.test
@@ -26,13 +23,14 @@ prep:
 	@if test ! -d $(TESTS_DIR); then mkdir $(TESTS_DIR); fi
 
 logger-cpp: prep
-	@$(CCPP) $(CPP_DIR)/logger.cpp -D_LOGGER_TEST -o $(CPP_TEST_BIN) -lpthread
+	@$(CXX) $(CFLAGS) $(CPP_DIR)/logger.cpp -D_LOGGER_TEST -o $(CPP_TEST_BIN) -lpthread
 
 logger-c: prep
-	@$(CC) $(C_DIR)/logger.c -D_LOGGER_TEST -D_GNU_SOURCE=1 -o $(C_TEST_BIN)
+	@$(CC) $(CFLAGS) $(C_DIR)/logger.c -D_LOGGER_TEST -o $(C_TEST_BIN)
 
 clean:
-	@rm -f $(C_TEST_BIN) $(CPP_TEST_BIN)
+	@rm -rf $(TESTS_DIR)
+	@rm -f *.log*
 
 mem_check-cpp:	OUTPUT_FILE = $(TESTS_DIR)/valgrind-out.txt
 

@@ -31,7 +31,7 @@ std::string Logging::make_msg_stamp(stamp_t type, const std::string &module_name
         case ms_time: {
             strftime(time_str, sizeof time_str, "%d.%m.%y %T", &timeinfo); 
             char buf[80] = {0};
-            snprintf(buf, sizeof buf, "[ %s.%03lu ] %s", time_str, spec.tv_nsec / 1000000L, module_name.c_str());
+            snprintf(buf, sizeof buf, "[ %s.%03lu ]%s ", time_str, spec.tv_nsec / 1000000L, module_name.c_str());
             std::string s {buf};
             return s;
         }
@@ -139,7 +139,7 @@ void printer_error(Logging *obj, int num, int thread_no)
 
 int main(int argc, char* argv[])
 {
-	Logging logger(MSG_VERBOSE, "THREADS");
+	Logging logger(MSG_VERBOSE, "[ MYLOG ]");
 
 	std::string s{"verbose msg"};
 
